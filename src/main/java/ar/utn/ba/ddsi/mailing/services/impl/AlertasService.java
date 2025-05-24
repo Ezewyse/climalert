@@ -1,7 +1,13 @@
 package ar.utn.ba.ddsi.mailing.services.impl;
 
+import ar.utn.ba.ddsi.mailing.models.entities.Alerta;
+import ar.utn.ba.ddsi.mailing.services.alertas.EvaluadorAlertas;
+import ar.utn.ba.ddsi.mailing.services.alertas.AlertaPorTemperatura;
+import ar.utn.ba.ddsi.mailing.services.alertas.AlertaPorHumedad;
 import ar.utn.ba.ddsi.mailing.models.entities.Clima;
-import ar.utn.ba.ddsi.mailing.models.entities.Email;
+//import ar.utn.ba.ddsi.mailing.models.dto.EmailDTO; ??
+import ar.utn.ba.ddsi.mailing.services.impl.EmailService;
+//import ar.utn.ba.ddsi.mailing.models.entities.Email;
 import ar.utn.ba.ddsi.mailing.models.repositories.IClimaRepository;
 import ar.utn.ba.ddsi.mailing.services.IAlertasService;
 import org.slf4j.Logger;
@@ -15,21 +21,27 @@ import java.util.List;
 @Service
 public class AlertasService implements IAlertasService {
     private static final Logger logger = LoggerFactory.getLogger(AlertasService.class);
-    private static final double TEMPERATURA_ALERTA = 35.0;
-    private static final int HUMEDAD_ALERTA = 60;
 
     private final IClimaRepository climaRepository;
     private final EmailService emailService;
+    private final EvaluadorAlertas evaluadorAlertas;
     private final String remitente;
     private final List<String> destinatarios;
 
     public AlertasService(
-            IClimaRepository climaRepository, 
+            IClimaRepository climaRepository,
             EmailService emailService,
             @Value("${email.alertas.remitente}") String remitente,
-            @Value("${email.alertas.destinatarios}") String destinatarios) {
+            @Value("${email.alertas.destinatarios}") String destinatarios,
+            @Value("${alerta.temperatura.limite}") double temperaturaLimite,
+            @Value("${alerta.humedad.limite}") int humedadLimite){
+
         this.climaRepository = climaRepository;
         this.emailService = emailService;
+        this.evaluadorAlertas = new EvaluadorAlertas(List.of(
+                new AlertaPorTemperatura(temperaturaLimite),
+                new AlertaPorHumedad(humedadLimite)
+        ));
         this.remitente = remitente;
         this.destinatarios = Arrays.asList(destinatarios.split(","));
     }
@@ -43,7 +55,7 @@ public class AlertasService implements IAlertasService {
             })
             .flatMap(climas -> {
                 climas.stream()
-                    .filter(this::cumpleCondicionesAlerta)
+                    .filter(evaluadorAlertas::cumpleCondiciones)
                     .forEach(this::generarYEnviarEmail);
                 
                 // Marcar todos como procesados
@@ -61,12 +73,6 @@ public class AlertasService implements IAlertasService {
             .then();
     }
 
-    private boolean cumpleCondicionesAlerta(Clima clima) {
-        //TODO: podríamos refactorizar el diseño para que no sea un simple método, pues puede ser más complejo
-        return clima.getTemperaturaCelsius() > TEMPERATURA_ALERTA && 
-               clima.getHumedad() > HUMEDAD_ALERTA;
-    }
-
     private void generarYEnviarEmail(Clima clima) {
         String asunto = "Alerta de Clima - Condiciones Extremas";
         String mensaje = String.format(
@@ -76,19 +82,21 @@ public class AlertasService implements IAlertasService {
             "Condición: %s\n" +
             "Velocidad del viento: %.1f km/h\n\n" +
             "Se recomienda tomar precauciones.",
-            clima.getCiudad(),
-            clima.getTemperaturaCelsius(),
-            clima.getHumedad(),
-            clima.getCondicion(),
-            clima.getVelocidadVientoKmh()
+            clima.getUbicacion().getCiudad(),
+            clima.getCondiciones().getTemperaturaCelsius(),
+            clima.getCondiciones().getHumedad(),
+            clima.getCondiciones().getCondicion(),
+            clima.getCondiciones().getVelocidadVientoKmh()
+
         );
 
         for (String destinatario : destinatarios) {
-            Email email = new Email(destinatario, remitente, asunto, mensaje);
-            emailService.crearEmail(email);
+            EmailDTO emailDTO = new EmailDTO(destinatario, remitente, asunto, mensaje);
+            emailService.crearEmail(emailDTO);
         }
         
-        logger.info("Email de alerta generado para {} - Enviado a {} destinatarios", 
-            clima.getCiudad(), destinatarios.size());
+        logger.info("Email de alerta generado para {} - Enviado a {} destinatarios",
+                clima.getUbicacion().getCiudad(), destinatarios.size());
+
     }
 } 
