@@ -1,6 +1,7 @@
 package ar.utn.ba.ddsi.mailing.models.repositories.impl;
 
 import ar.utn.ba.ddsi.mailing.models.entities.Clima;
+import ar.utn.ba.ddsi.mailing.models.entities.Ubicacion;
 import ar.utn.ba.ddsi.mailing.models.repositories.IClimaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.*;
@@ -9,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Repository
 public class ClimaRepository implements IClimaRepository {
     private final Map<Long, Clima> climas = new HashMap<>();
-    private final Map<String, Long> ciudadToId = new HashMap<>();
+    private final Map<Ubicacion, Long> ciudadToId = new HashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
 
     @Override
@@ -17,11 +18,10 @@ public class ClimaRepository implements IClimaRepository {
         if (clima.getId() == null) {
             Long id = idGenerator.getAndIncrement();
             clima.setId(id);
-            climas.put(id, clima);
-            ciudadToId.put(clima.getCiudad(), id);
-        } else {
-            climas.put(clima.getId(), clima);
-            ciudadToId.put(clima.getCiudad(), clima.getId());
+        }
+        climas.put(clima.getId(), clima);
+        if (clima.getUbicacion() != null) {
+            ciudadToId.put(clima.getUbicacion(), clima.getId());
         }
         return clima;
     }
@@ -40,7 +40,7 @@ public class ClimaRepository implements IClimaRepository {
     public Optional<Clima> findByCiudad(String ciudad) {
         Long id = ciudadToId.get(ciudad);
         return id != null ? Optional.of(climas.get(id)) : Optional.empty();
-    }
+    }//Revisar
 
     @Override
     public List<Clima> findByProcesado(boolean procesado) {
@@ -53,7 +53,7 @@ public class ClimaRepository implements IClimaRepository {
     public void delete(Clima clima) {
         if (clima.getId() != null) {
             climas.remove(clima.getId());
-            ciudadToId.remove(clima.getCiudad());
+            ciudadToId.remove(clima.getUbicacion());
         }
     }
 } 

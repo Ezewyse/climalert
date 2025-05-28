@@ -5,7 +5,7 @@ import ar.utn.ba.ddsi.mailing.services.alertas.EvaluadorAlertas;
 import ar.utn.ba.ddsi.mailing.services.alertas.AlertaPorTemperatura;
 import ar.utn.ba.ddsi.mailing.services.alertas.AlertaPorHumedad;
 import ar.utn.ba.ddsi.mailing.models.entities.Clima;
-//import ar.utn.ba.ddsi.mailing.models.dto.EmailDTO; ??
+import ar.utn.ba.ddsi.mailing.models.dtoEmail.EmailDTO;
 import ar.utn.ba.ddsi.mailing.services.impl.EmailService;
 //import ar.utn.ba.ddsi.mailing.models.entities.Email;
 import ar.utn.ba.ddsi.mailing.models.repositories.IClimaRepository;
